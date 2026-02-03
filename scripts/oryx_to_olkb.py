@@ -176,23 +176,31 @@ def main():
 
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
+    # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
+    
+    # FIX: Update layer_state_set_user signature for modern QMK
+    # Old: uint8_t layer_state_set_user(uint8_t state)
+    # New: layer_state_t layer_state_set_user(layer_state_t state)
+    new_content = re.sub(
+        r'uint8_t\s+layer_state_set_user\s*\(\s*uint8_t\s+state\s*\)',
+        r'layer_state_t layer_state_set_user(layer_state_t state)',
+        new_content
+    )
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     with open(OUTPUT_KEYMAP, "w", encoding="utf-8") as f:
         f.write(f"// Converted by oryx_to_olkb.py\n// Retains Vial/OLKB Matrix Compatibility\n{new_content}")
 
-    # Generate rules.mk to solve linker error
+    # Generate rules.mk
     with open(OUTPUT_RULES, "w", encoding="utf-8") as f:
         f.write("# Generated rules.mk\n")
         f.write("TAP_DANCE_ENABLE = yes\n")
         f.write("VIAL_TAP_DANCE_ENABLE = no  # Disable Vial's internal tap dance to use Oryx's custom ones\n")
 
     print(f"Success! Output saved to '{OUTPUT_DIR}'")
-    print(f"1. Copy '{OUTPUT_KEYMAP}' to your keymaps/vial/ folder.")
-    print(f"2. Copy '{OUTPUT_RULES}' to your keymaps/vial/ folder.")
 
 
 if __name__ == "__main__":
