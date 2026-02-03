@@ -219,6 +219,10 @@ MUSIC_ENABLE = yes
 
 # Link-Time Optimization (reduces firmware size)
 LTO_ENABLE = yes
+
+# Introspection fix
+COMBO_ENABLE = yes
+KEY_OVERRIDE_ENABLE = yes
 """
     with open(output_path, 'w') as f:
         f.write(rules_content)
@@ -283,8 +287,9 @@ def main():
     new_content = re.sub(r'(#include "muse.h")', r'// \1', new_content)
     
     # FIX: Update layer_state_set_user signature for modern QMK
+    # Handles both uint8_t (old) and uint32_t (ZSA) -> layer_state_t
     new_content = re.sub(
-        r'uint8_t\s+layer_state_set_user\s*\(\s*uint8_t\s+state\s*\)',
+        r'(?:uint8_t|uint32_t|layer_state_t)\s+layer_state_set_user\s*\(\s*(?:uint8_t|uint32_t|layer_state_t)\s+state\s*\)',
         r'layer_state_t layer_state_set_user(layer_state_t state)',
         new_content
     )
@@ -296,6 +301,16 @@ def main():
         new_content = comment_out_function(new_content, "matrix_scan_user")
         # Disable the separate prototype if it exists
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
+
+    # FIX: Add dummy Introspection data if missing (to satisfy compiler)
+    introspection_fix = "\n\n/* Introspection Fixes for Vial/QMK */\n"
+    if "key_combos" not in new_content:
+        introspection_fix += "#ifdef COMBO_ENABLE\nconst combo_t PROGMEM key_combos[0] = {};\n#endif\n"
+    
+    if "key_overrides" not in new_content:
+        introspection_fix += "#ifdef KEY_OVERRIDE_ENABLE\nconst key_override_t **key_overrides = (const key_override_t *[]){NULL};\n#endif\n"
+
+    new_content += introspection_fix
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
