@@ -6,6 +6,37 @@ import os
 INPUT_FILE = "zsa_oryx_source/keymap.c"
 OUTPUT_FILE = "olkb_firmware/keymap.c"
 
+def split_keycodes(content):
+    """
+    Splits a string of comma-separated keycodes while respecting nested parentheses.
+    Example: "KC_A, MT(MOD_LSFT, KC_Z), KC_B" -> ["KC_A", "MT(MOD_LSFT, KC_Z)", "KC_B"]
+    """
+    keys = []
+    current_key = []
+    depth = 0
+    
+    for char in content:
+        if char == '(':
+            depth += 1
+            current_key.append(char)
+        elif char == ')':
+            depth -= 1
+            current_key.append(char)
+        elif char == ',' and depth == 0:
+            # Split point found
+            key_str = "".join(current_key).strip()
+            if key_str:
+                keys.append(key_str)
+            current_key = []
+        else:
+            current_key.append(char)
+            
+    # Append last key
+    key_str = "".join(current_key).strip()
+    if key_str:
+        keys.append(key_str)
+        
+    return keys
 
 def parse_zsa_layers(content: str):
     """Parse the ZSA keymaps array and extract per-layer 4x12 key lists."""
@@ -29,9 +60,11 @@ def parse_zsa_layers(content: str):
     for layer_name, layer_content in layer_matches:
         # Clean up the content
         clean_content = re.sub(r"//.*", "", layer_content)  # Strip comments
-        clean_content = re.sub(r"\s+", "", clean_content)  # Remove whitespace
-        keys = clean_content.split(",")
-        keys = [k for k in keys if k]  # Filter empty strings
+        clean_content = re.sub(r"\s+", " ", clean_content) # Normalize whitespace to single spaces
+        
+        # Use robust splitter instead of simple string split
+        keys = split_keycodes(clean_content)
+        
         layers.append((layer_name, keys))
 
     return layers
@@ -129,7 +162,6 @@ def main():
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
     # FIX: Comment out ZSA-specific headers that break OLKB/Vial builds
-    # ZSA often includes "version.h" or "zsa.h" which don't exist in standard QMK
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
 
@@ -139,7 +171,6 @@ def main():
         f.write(f"// Converted by oryx_to_olkb.py\n// Retains Vial/OLKB Matrix Compatibility\n{new_content}")
 
     print(f"Success! Saved to {OUTPUT_FILE}")
-    print("Vial Capability Note: The script uses the raw 8x6 matrix format required by Vial for the Planck Rev 6.")
 
 
 if __name__ == "__main__":
