@@ -459,7 +459,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 /* Introspection Fixes for Vial/QMK */
 #ifdef COMBO_ENABLE
-const combo_t PROGMEM key_combos[0] = {};
+combo_t key_combos[0] = {};
 #endif
 #ifdef KEY_OVERRIDE_ENABLE
 const key_override_t *key_overrides[] = { NULL };
