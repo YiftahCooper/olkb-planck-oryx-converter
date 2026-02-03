@@ -1,5 +1,3 @@
-// Converted by oryx_to_olkb.py
-// Retains Vial/OLKB Matrix Compatibility
 #include QMK_KEYBOARD_H
 #ifdef AUDIO_ENABLE
 // #include "muse.h"
@@ -328,14 +326,7 @@ void on_dance_6(tap_dance_state_t *state, void *user_data) {
 }
 
 void dance_6_finished(tap_dance_state_t *state, void *user_data) {
-    dance_state[6].step = dance_step(state);
-    switch (dance_state[6].step) {
-        case SINGLE_TAP: register_code16(KC_DELETE); break;
-        case SINGLE_HOLD: register_code16(KC_RIGHT_CTRL); break;
-        case DOUBLE_TAP: register_code16(RCTL(KC_DELETE)); break;
-        case DOUBLE_HOLD: register_code16(KC_DELETE); break;
-        case DOUBLE_SINGLE_TAP: tap_code16(KC_DELETE); register_code16(KC_DELETE);
-    }
+    dance_6_reset(state, user_data);
 }
 
 void dance_6_reset(tap_dance_state_t *state, void *user_data) {
@@ -456,3 +447,10 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     return update_tri_layer_state(state, _LOWER, _RAISE, _ADJUST);
 }
 
+
+/* Introspection Fixes for Vial/QMK */
+#ifdef COMBO_ENABLE
+const combo_t PROGMEM key_combos[0] = {};
+#endif
+#ifdef KEY_OVERRIDE_ENABLE
+const key_override_t **key_overrides = (const key_override_t *[]){NULL};\n#endif\n
