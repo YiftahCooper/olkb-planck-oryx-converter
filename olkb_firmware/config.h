@@ -1,23 +1,13 @@
-/* Copyright 2015-2021 Jack Humbert
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #pragma once
 
+/* Vial Configuration for Planck Rev6 */
+
+/* 1. Vial UID - Unique identifier for this keyboard in Vial app */
+/* Change the last byte (0x77) to force a layout reset if needed */
 #define VIAL_KEYBOARD_UID {0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x77}
-#define VIAL_UNLOCK_COMBO_ROWS { 0}
-#define VIAL_UNLOCK_COMBO_COLS { 0}
-#define DYNAMIC_KEYMAP_LAYER_COUNT 4
-#define ENCODER_RESOLUTION 4
+
+/* 2. Unlock Combo - Press these keys simultaneously to unlock Vial editing */
+/* Top-Left: Esc at (0,0) and Top-Right: Backspace at (4,5) */
+/* Planck matrix: Left half = rows 0-3, Right half = rows 4-7, Cols = 0-5 */
+#define VIAL_UNLOCK_COMBO_ROWS { 0, 4 }
+#define VIAL_UNLOCK_COMBO_COLS { 0, 5 }
