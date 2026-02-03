@@ -8,15 +8,7 @@ OUTPUT_FILE = "olkb_firmware/keymap.c"
 
 
 def parse_zsa_layers(content: str):
-    """Parse the ZSA keymaps array and extract per-layer 4x12 key lists.
-
-    This looks for:
-        keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-            [_BASE] = LAYOUT_planck_grid(...),
-            ...
-        };
-    and returns a list of (layer_name, [keys...]).
-    """
+    """Parse the ZSA keymaps array and extract per-layer 4x12 key lists."""
     match = re.search(
         r"keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]\s*=\s*\{([\s\S]*?)\};",
         content,
@@ -47,13 +39,14 @@ def parse_zsa_layers(content: str):
 
 def transpose_to_olkb_matrix(keys):
     """Convert a 48-key 4x12 visual layout into an 8x6 OLKB Planck Rev 6 matrix.
-
+    
+    This preserves VIAL CAPABILITY by creating the raw matrix structure 
+    that matches the split-matrix hardware of the Rev 6.
     Left half (cols 0-5)  -> rows 0-3
     Right half (cols 6-11) -> rows 4-7
     """
     # Handle MIT layout (47 keys with 2u spacebar)
     if len(keys) == 47:
-        # Duplicate the spacebar position so we still have a 4x12 grid
         keys.insert(41, keys[41])
 
     # Initialize 8x6 matrix with KC_NO
@@ -84,12 +77,7 @@ def transpose_to_olkb_matrix(keys):
 
 
 def generate_keymaps_block(layers):
-    """Generate the full const keymaps block for the OLKB matrix.
-
-    This intentionally only emits the keymaps array; all other code
-    (custom keycodes, tap dances, macros, process_record_user, etc.)
-    is preserved from the original file.
-    """
+    """Generate the full const keymaps block for the OLKB matrix."""
     output = []
     output.append("const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {")
 
@@ -129,8 +117,7 @@ def main():
     # Build the new keymaps block
     new_keymaps_block = generate_keymaps_block(layers)
 
-    # Replace the original keymaps block in the full source, preserving
-    # everything else: enums, tap dances, macros, process_record_user, etc.
+    # Replace the original keymaps block
     full_pattern = (
         r"const\s+uint16_t\s+PROGMEM\s+keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]"
         r"\s*=\s*\{[\s\S]*?\};"
@@ -141,12 +128,18 @@ def main():
 
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
+    # FIX: Comment out ZSA-specific headers that break OLKB/Vial builds
+    # ZSA often includes "version.h" or "zsa.h" which don't exist in standard QMK
+    new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
+    new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
+
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(new_content)
+        f.write(f"// Converted by oryx_to_olkb.py\n// Retains Vial/OLKB Matrix Compatibility\n{new_content}")
 
-    print(f"Success! Transposed keymap (with all enums/macros/functions preserved) saved to {OUTPUT_FILE}")
+    print(f"Success! Saved to {OUTPUT_FILE}")
+    print("Vial Capability Note: The script uses the raw 8x6 matrix format required by Vial for the Planck Rev 6.")
 
 
 if __name__ == "__main__":
