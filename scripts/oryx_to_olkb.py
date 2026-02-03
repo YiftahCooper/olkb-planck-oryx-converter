@@ -4,7 +4,9 @@ import os
 
 # Configuration
 INPUT_FILE = "zsa_oryx_source/keymap.c"
-OUTPUT_FILE = "olkb_firmware/keymap.c"
+OUTPUT_DIR = "olkb_firmware"
+OUTPUT_KEYMAP = os.path.join(OUTPUT_DIR, "keymap.c")
+OUTPUT_RULES = os.path.join(OUTPUT_DIR, "rules.mk")
 
 def split_keycodes(content):
     """
@@ -38,8 +40,7 @@ def split_keycodes(content):
 def extract_layer_content(full_text, start_index):
     """
     Starting from the character AFTER 'LAYOUT_xxx(', walk forward 
-    counting parentheses to extract the full layer definition 
-    handling nested macros correctly.
+    counting parentheses to extract the full layer definition.
     """
     content = []
     depth = 1 # We started after the first '('
@@ -61,7 +62,6 @@ def extract_layer_content(full_text, start_index):
 def parse_zsa_layers(content: str):
     """Parse the ZSA keymaps array and extract per-layer 4x12 key lists."""
     
-    # Locate the main keymaps array block
     match = re.search(
         r"keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]\s*=\s*\{",
         content,
@@ -70,30 +70,22 @@ def parse_zsa_layers(content: str):
         print("Error: Could not find keymaps array start in input file.")
         return []
 
-    # Start searching for layers AFTER the keymaps array starts
     search_start = match.end()
-    
-    # Regex to find the START of a layer definition: [NAME] = LAYOUT_xxx(
-    # We purposefully do NOT try to capture the end here.
     layer_start_pattern = re.compile(r"\[([^\]]+)\]\s*=\s*LAYOUT_\w+\(")
     
     layers = []
     
-    # Iterate over all layer starts found in the file
     for match in layer_start_pattern.finditer(content, search_start):
         layer_name = match.group(1)
         content_start_index = match.end()
         
-        # Use robust parser to get the full content until matching ')'
         raw_layer_content = extract_layer_content(content, content_start_index)
         
-        # Clean up
-        clean_content = re.sub(r"//.*", "", raw_layer_content)  # Strip comments
+        clean_content = re.sub(r"//.*", "", raw_layer_content)
         clean_content = clean_content.replace("\n", " ").replace("\r", "")
         
         keys = split_keycodes(clean_content)
         
-        # Validation
         if len(keys) < 47:
              print(f"Warning: Layer {layer_name} has only {len(keys)} keys. Check parsing logic.")
 
@@ -106,7 +98,6 @@ def transpose_to_olkb_matrix(keys):
     """Convert a 48-key 4x12 visual layout into an 8x6 OLKB Planck Rev 6 matrix."""
     current_keys = list(keys)
 
-    # Handle MIT layout (47 keys with 2u spacebar)
     if len(current_keys) == 47:
         current_keys.insert(41, current_keys[41])
     elif len(current_keys) < 47:
@@ -185,16 +176,23 @@ def main():
 
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
-    # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
 
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    with open(OUTPUT_KEYMAP, "w", encoding="utf-8") as f:
         f.write(f"// Converted by oryx_to_olkb.py\n// Retains Vial/OLKB Matrix Compatibility\n{new_content}")
 
-    print(f"Success! Saved to {OUTPUT_FILE}")
+    # Generate rules.mk to solve linker error
+    with open(OUTPUT_RULES, "w", encoding="utf-8") as f:
+        f.write("# Generated rules.mk\n")
+        f.write("TAP_DANCE_ENABLE = yes\n")
+        f.write("VIAL_TAP_DANCE_ENABLE = no  # Disable Vial's internal tap dance to use Oryx's custom ones\n")
+
+    print(f"Success! Output saved to '{OUTPUT_DIR}'")
+    print(f"1. Copy '{OUTPUT_KEYMAP}' to your keymaps/vial/ folder.")
+    print(f"2. Copy '{OUTPUT_RULES}' to your keymaps/vial/ folder.")
 
 
 if __name__ == "__main__":
