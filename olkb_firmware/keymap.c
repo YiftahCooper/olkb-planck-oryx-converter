@@ -423,7 +423,8 @@ void encoder_update(bool clockwise) {
     }
 }
 
-/* /* void matrix_scan_user(void) {
+#if 0 // Disabled by oryx_to_olkb
+/* void matrix_scan_user(void) {
 #ifdef AUDIO_ENABLE
     if (muse_mode) {
         if (muse_counter == 0) {
@@ -437,7 +438,8 @@ void encoder_update(bool clockwise) {
         muse_counter = (muse_counter + 1) % muse_tempo;
     }
 #endif
-} */ */
+} */
+#endif
 
 bool music_mask_user(uint16_t keycode) {
     switch (keycode) {
@@ -460,5 +462,5 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 const combo_t PROGMEM key_combos[0] = {};
 #endif
 #ifdef KEY_OVERRIDE_ENABLE
-const key_override_t **key_overrides = (const key_override_t *[]){NULL};
+const key_override_t *key_overrides[] = { NULL };
 #endif
