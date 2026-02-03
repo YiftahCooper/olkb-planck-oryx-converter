@@ -326,7 +326,14 @@ void on_dance_6(tap_dance_state_t *state, void *user_data) {
 }
 
 void dance_6_finished(tap_dance_state_t *state, void *user_data) {
-    dance_6_reset(state, user_data);
+    dance_state[6].step = dance_step(state);
+    switch (dance_state[6].step) {
+        case SINGLE_TAP: register_code16(KC_DELETE); break;
+        case SINGLE_HOLD: register_code16(KC_RIGHT_CTRL); break;
+        case DOUBLE_TAP: register_code16(RCTL(KC_DELETE)); break;
+        case DOUBLE_HOLD: register_code16(KC_DELETE); break;
+        case DOUBLE_SINGLE_TAP: tap_code16(KC_DELETE); register_code16(KC_DELETE);
+    }
 }
 
 void dance_6_reset(tap_dance_state_t *state, void *user_data) {
@@ -416,7 +423,7 @@ void encoder_update(bool clockwise) {
     }
 }
 
-/* void matrix_scan_user(void) {
+/* /* void matrix_scan_user(void) {
 #ifdef AUDIO_ENABLE
     if (muse_mode) {
         if (muse_counter == 0) {
@@ -430,7 +437,7 @@ void encoder_update(bool clockwise) {
         muse_counter = (muse_counter + 1) % muse_tempo;
     }
 #endif
-} */
+} */ */
 
 bool music_mask_user(uint16_t keycode) {
     switch (keycode) {
@@ -453,4 +460,5 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 const combo_t PROGMEM key_combos[0] = {};
 #endif
 #ifdef KEY_OVERRIDE_ENABLE
-const key_override_t **key_overrides = (const key_override_t *[]){NULL};\n#endif\n
+const key_override_t **key_overrides = (const key_override_t *[]){NULL};
+#endif
