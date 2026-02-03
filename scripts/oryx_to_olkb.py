@@ -179,15 +179,26 @@ def main():
     # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
+    # FIX: Comment out 'muse' related headers (ZSA audio visualization)
+    new_content = re.sub(r'(#include "muse.h")', r'// \1', new_content)
     
     # FIX: Update layer_state_set_user signature for modern QMK
-    # Old: uint8_t layer_state_set_user(uint8_t state)
-    # New: layer_state_t layer_state_set_user(layer_state_t state)
     new_content = re.sub(
         r'uint8_t\s+layer_state_set_user\s*\(\s*uint8_t\s+state\s*\)',
         r'layer_state_t layer_state_set_user(layer_state_t state)',
         new_content
     )
+
+    # FIX: Comment out matrix_scan_user if it calls muse functions
+    # This is a bit aggressive but necessary since we don't have the muse driver.
+    # We look for the function and comment out the whole block if it looks like the standard ZSA one.
+    if "muse_clock_pulse" in new_content:
+        print("Found ZSA 'muse' audio code. Disabling matrix_scan_user to prevent linker errors...")
+        # Comment out the specific function call if possible, or the whole function
+        new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*\{[\s\S]*?\})', r'/* \1 */', new_content)
+        # Also comment out the separate definition if it exists
+        new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
+
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
