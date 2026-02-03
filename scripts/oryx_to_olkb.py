@@ -68,7 +68,8 @@ def extract_layer_content(full_text, start_index):
 def comment_out_function(content, function_name):
     """
     Robustly comments out a function by finding its start and 
-    matching braces to find the end, then wrapping in /* */.
+    matching braces to find the end, then wrapping in #if 0 ... #endif.
+    Using C-style comments /* */ caused nesting issues.
     """
     # Find the function definition start: void function_name ... {
     pattern = re.compile(r"void\s+" + re.escape(function_name) + r"\s*\([^)]*\)\s*\{")
@@ -100,8 +101,8 @@ def comment_out_function(content, function_name):
     # extract the full block
     full_function = content[start_idx:end_idx]
     
-    # wrap in comment
-    commented_function = "/* " + full_function + " */"
+    # wrap in preprocessor directive instead of comments
+    commented_function = "\n#if 0 // Disabled by oryx_to_olkb\n" + full_function + "\n#endif\n"
     
     # replace in content
     new_content = content[:start_idx] + commented_function + content[end_idx:]
@@ -294,7 +295,7 @@ def main():
         new_content
     )
 
-    # FIX: Robustly comment out matrix_scan_user using brace counting
+    # FIX: Robustly disable matrix_scan_user using preprocessor directive #if 0
     if "muse_clock_pulse" in new_content or "matrix_scan_user" in new_content:
         print("Disabling matrix_scan_user to prevent Vial conflicts...")
         # Disable the function definition
@@ -303,14 +304,14 @@ def main():
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
 
     # FIX: Add dummy Introspection data if missing (to satisfy compiler)
-    # Corrected the syntax to remove escaped newlines and invalid types
+    # Corrected the syntax to be a proper array definition
     introspection_fix = "\n\n/* Introspection Fixes for Vial/QMK */\n"
     if "key_combos" not in new_content:
         introspection_fix += "#ifdef COMBO_ENABLE\nconst combo_t PROGMEM key_combos[0] = {};\n#endif\n"
     
     if "key_overrides" not in new_content:
-        # Correctly define key_overrides as a NULL-terminated array of pointers
-        introspection_fix += "#ifdef KEY_OVERRIDE_ENABLE\nconst key_override_t **key_overrides = (const key_override_t *[]){NULL};\n#endif\n"
+        # Corrected: standard array definition, not pointer-to-pointer casting
+        introspection_fix += "#ifdef KEY_OVERRIDE_ENABLE\nconst key_override_t *key_overrides[] = { NULL };\n#endif\n"
 
     new_content += introspection_fix
 
