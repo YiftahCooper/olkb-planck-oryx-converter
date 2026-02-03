@@ -303,11 +303,13 @@ def main():
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
 
     # FIX: Add dummy Introspection data if missing (to satisfy compiler)
+    # Corrected the syntax to remove escaped newlines and invalid types
     introspection_fix = "\n\n/* Introspection Fixes for Vial/QMK */\n"
     if "key_combos" not in new_content:
         introspection_fix += "#ifdef COMBO_ENABLE\nconst combo_t PROGMEM key_combos[0] = {};\n#endif\n"
     
     if "key_overrides" not in new_content:
+        # Correctly define key_overrides as a NULL-terminated array of pointers
         introspection_fix += "#ifdef KEY_OVERRIDE_ENABLE\nconst key_override_t **key_overrides = (const key_override_t *[]){NULL};\n#endif\n"
 
     new_content += introspection_fix
