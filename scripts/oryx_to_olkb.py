@@ -9,7 +9,6 @@ OUTPUT_FILE = "olkb_firmware/keymap.c"
 def split_keycodes(content):
     """
     Splits a string of comma-separated keycodes while respecting nested parentheses.
-    Example: "KC_A, MT(MOD_LSFT, KC_Z), KC_B" -> ["KC_A", "MT(MOD_LSFT, KC_Z)", "KC_B"]
     """
     keys = []
     current_key = []
@@ -23,7 +22,6 @@ def split_keycodes(content):
             depth -= 1
             current_key.append(char)
         elif char == ',' and depth == 0:
-            # Split point found
             key_str = "".join(current_key).strip()
             if key_str:
                 keys.append(key_str)
@@ -31,47 +29,73 @@ def split_keycodes(content):
         else:
             current_key.append(char)
             
-    # Append last key
     key_str = "".join(current_key).strip()
     if key_str:
         keys.append(key_str)
         
     return keys
 
+def extract_layer_content(full_text, start_index):
+    """
+    Starting from the character AFTER 'LAYOUT_xxx(', walk forward 
+    counting parentheses to extract the full layer definition 
+    handling nested macros correctly.
+    """
+    content = []
+    depth = 1 # We started after the first '('
+    i = start_index
+    
+    while i < len(full_text) and depth > 0:
+        char = full_text[i]
+        if char == '(':
+            depth += 1
+        elif char == ')':
+            depth -= 1
+        
+        if depth > 0:
+            content.append(char)
+        i += 1
+    
+    return "".join(content)
+
 def parse_zsa_layers(content: str):
     """Parse the ZSA keymaps array and extract per-layer 4x12 key lists."""
+    
+    # Locate the main keymaps array block
     match = re.search(
-        r"keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]\s*=\s*\{([\s\S]*?)\};",
+        r"keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]\s*=\s*\{",
         content,
     )
     if not match:
-        print("Error: Could not find keymaps array in input file.")
+        print("Error: Could not find keymaps array start in input file.")
         return []
 
-    raw_layers_content = match.group(1)
-
-    # Find individual layers (handles named layers like [_BASE])
-    layer_matches = re.findall(
-        r"\[([^\]]+)\]\s*=\s*LAYOUT_\w+\(([\s\S]*?)\)",
-        raw_layers_content,
-    )
-
+    # Start searching for layers AFTER the keymaps array starts
+    search_start = match.end()
+    
+    # Regex to find the START of a layer definition: [NAME] = LAYOUT_xxx(
+    # We purposefully do NOT try to capture the end here.
+    layer_start_pattern = re.compile(r"\[([^\]]+)\]\s*=\s*LAYOUT_\w+\(")
+    
     layers = []
-    for layer_name, layer_content in layer_matches:
-        # Clean up the content
-        clean_content = re.sub(r"//.*", "", layer_content)  # Strip comments
-        # REMOVED: clean_content = re.sub(r"\s+", " ", clean_content) 
-        # Reason: The splitter handles whitespace better if we just let it run on the raw string, 
-        # or at least simplistic whitespace removal was merging tokens incorrectly.
-        # We will just strip newlines for safety but keep spaces for clarity in splitting.
+    
+    # Iterate over all layer starts found in the file
+    for match in layer_start_pattern.finditer(content, search_start):
+        layer_name = match.group(1)
+        content_start_index = match.end()
+        
+        # Use robust parser to get the full content until matching ')'
+        raw_layer_content = extract_layer_content(content, content_start_index)
+        
+        # Clean up
+        clean_content = re.sub(r"//.*", "", raw_layer_content)  # Strip comments
         clean_content = clean_content.replace("\n", " ").replace("\r", "")
         
-        # Use robust splitter instead of simple string split
         keys = split_keycodes(clean_content)
         
-        # Validation: A Planck layer MUST have at least 47 keys.
+        # Validation
         if len(keys) < 47:
-             print(f"Warning: Layer {layer_name} has only {len(keys)} keys. Expected 47 or 48.")
+             print(f"Warning: Layer {layer_name} has only {len(keys)} keys. Check parsing logic.")
 
         layers.append((layer_name, keys))
 
@@ -80,21 +104,15 @@ def parse_zsa_layers(content: str):
 
 def transpose_to_olkb_matrix(keys):
     """Convert a 48-key 4x12 visual layout into an 8x6 OLKB Planck Rev 6 matrix."""
-    
-    # Copy keys to avoid modifying the original list in the loop
     current_keys = list(keys)
 
     # Handle MIT layout (47 keys with 2u spacebar)
-    # Oryx export often skips the "second half" of the 2u spacebar.
-    # We duplicate index 41 (usually space) to make it 48 keys.
     if len(current_keys) == 47:
         current_keys.insert(41, current_keys[41])
     elif len(current_keys) < 47:
-        # Pad with KC_NO if totally broken, to prevent index errors
         while len(current_keys) < 48:
             current_keys.append("KC_NO")
 
-    # Initialize 8x6 matrix with KC_NO
     matrix = [["KC_NO" for _ in range(6)] for _ in range(8)]
 
     for i in range(48):
@@ -102,17 +120,13 @@ def transpose_to_olkb_matrix(keys):
             break
         keycode = current_keys[i]
 
-        # Calculate visual position (4x12 grid)
         visual_row = i // 12
         visual_col = i % 12
 
-        # Transpose logic for split matrix
         if visual_col < 6:
-            # Left half
             target_row = visual_row
             target_col = visual_col
         else:
-            # Right half, shifted down by 4 rows
             target_row = visual_row + 4
             target_col = visual_col - 6
 
@@ -159,10 +173,8 @@ def main():
 
     print(f"Found {len(layers)} layers. Converting keymaps...")
 
-    # Build the new keymaps block
     new_keymaps_block = generate_keymaps_block(layers)
 
-    # Replace the original keymaps block
     full_pattern = (
         r"const\s+uint16_t\s+PROGMEM\s+keymaps\[\]\[MATRIX_ROWS\]\[MATRIX_COLS\]"
         r"\s*=\s*\{[\s\S]*?\};"
@@ -173,7 +185,7 @@ def main():
 
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
-    # FIX: Comment out ZSA-specific headers that break OLKB/Vial builds
+    # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
 
