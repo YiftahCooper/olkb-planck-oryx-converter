@@ -1,17 +1,16 @@
 # OLKB Planck Oryx Converter
 
-This repository contains tools to convert ZSA Oryx source code to firmware compatible with the OLKB Planck Rev 6 (and 6.1) keyboard.
+This repository contains tools to convert ZSA Oryx source code to firmware compatible with the OLKB Planck Rev 6 (and 6.1) keyboard, with full **Vial** support.
 
 ## Problem Statement
-The OLKB Planck Rev 6 uses a "folded" electrical matrix (8 rows x 6 columns) which is fundamentally different from the visual 4x12 grid layout. ZSA Oryx exports code assuming a linear 4x12 layout, which causes keys to be scrambled when flashed directly to an OLKB board.
+The OLKB Planck Rev 6 uses a "folded" electrical matrix (8 rows x 6 columns) which is fundamentally different from the visual 4x12 grid layout. ZSA Oryx exports code assuming a linear 4x12 layout, which causes keys to be scrambled when flashed directly to an OLKB board. Additionally, standard ZSA exports lack the necessary configuration for Vial (dynamic remapping).
 
 ## Solution
-The script `scripts/oryx_to_olkb.py` automatically transposes the keymap matrix:
-1. Parses the ZSA `keymap.c`.
-2. Splits the 4x12 visual grid into two 4x6 halves.
-3. Maps the Left Half to Matrix Rows 0-3.
-4. Maps the Right Half to Matrix Rows 4-7.
-5. Generates a new `keymap.c` that works correctly on the OLKB hardware.
+The script `scripts/oryx_to_olkb.py` automatically:
+1. **Transposes the Matrix**: Splits the 4x12 visual grid into two 4x6 halves and maps them to the correct Planck Rev 6 matrix rows.
+2. **Preserves Logic**: Retains your macros, tap dances, and custom keycodes from the Oryx export.
+3. **Enables Vial**: Generates `rules.mk` and `config.h` with the required settings (`VIAL_ENABLE`, `VIAL_KEYBOARD_UID`, unlock combos) to make the keyboard detected by the Vial app.
+4. **Fixes Conflicts**: Automatically handles conflicts between ZSA's `muse` audio/matrix scanning and Vial's requirements.
 
 ## Usage
 
@@ -21,14 +20,27 @@ The script `scripts/oryx_to_olkb.py` automatically transposes the keymap matrix:
    ```bash
    python3 scripts/oryx_to_olkb.py
    ```
-4. **Flash**: Use the generated file in `olkb_firmware/keymap.c` to compile and flash your firmware (using QMK or Vial).
+4. **Deploy**: The script generates 3 files in `olkb_firmware/`:
+   - `keymap.c` (Converted keymap)
+   - `rules.mk` (Build rules with Vial & Audio enabled)
+   - `config.h` (Vial configuration)
 
-## Manual Steps Required
-The script handles the keymap transposition perfectly, but you must manually copy these sections from your ZSA source to the output file if you use them:
-- `enum custom_keycodes`
-- `enum tap_dance_codes`
-- `tap_dance_actions[]`
-- Macros and `process_record_user` functions
+   Copy **all 3 files** to your QMK directory:
+   ```
+   qmk_firmware/keyboards/planck/keymaps/vial/
+   ```
+
+5. **Compile**:
+   ```bash
+   qmk compile -kb planck/rev6 -km vial
+   ```
+
+## Features
+- **Matrix Transposition**: 8x2 (ZSA) → 8x6 (Planck Rev 6).
+- **Vial Support**: Generates valid UID and unlock combo (Top-Left + Top-Right keys).
+- **Audio Enabled**: Enables `AUDIO_ENABLE` and `MUSIC_ENABLE` by default.
+- **Optimization**: Enables `LTO_ENABLE` to save firmware size.
+- **Conflict Resolution**: Safely disables `matrix_scan_user` to prevent build errors.
 
 ## Credits
 Based on the "Comprehensive Report: Resolving Vial Layout Rendering Issues and ZSA-to-OLKB Firmware Conversion for Planck Rev 6".
