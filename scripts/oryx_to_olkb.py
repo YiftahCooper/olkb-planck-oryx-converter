@@ -59,6 +59,49 @@ def extract_layer_content(full_text, start_index):
     
     return "".join(content)
 
+def comment_out_function(content, function_name):
+    """
+    Robustly comments out a function by finding its start and 
+    matching braces to find the end, then wrapping in /* */.
+    """
+    # Find the function definition start: void function_name ... {
+    pattern = re.compile(r"void\s+" + re.escape(function_name) + r"\s*\([^)]*\)\s*\{")
+    match = pattern.search(content)
+    
+    if not match:
+        return content
+        
+    start_idx = match.start()
+    open_brace_idx = match.end() - 1
+    
+    # Verify the last char is indeed '{'
+    if content[open_brace_idx] != '{':
+        print(f"Warning: parsing error locating start of {function_name}")
+        return content
+
+    # Walk forward from open brace to find matching close brace
+    depth = 1
+    i = open_brace_idx + 1
+    while i < len(content) and depth > 0:
+        if content[i] == '{':
+            depth += 1
+        elif content[i] == '}':
+            depth -= 1
+        i += 1
+    
+    end_idx = i
+    
+    # extract the full block
+    full_function = content[start_idx:end_idx]
+    
+    # wrap in comment
+    commented_function = "/* " + full_function + " */"
+    
+    # replace in content
+    new_content = content[:start_idx] + commented_function + content[end_idx:]
+    
+    return new_content
+
 def parse_zsa_layers(content: str):
     """Parse the ZSA keymaps array and extract per-layer 4x12 key lists."""
     
@@ -179,7 +222,6 @@ def main():
     # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
-    # FIX: Comment out 'muse' related headers (ZSA audio visualization)
     new_content = re.sub(r'(#include "muse.h")', r'// \1', new_content)
     
     # FIX: Update layer_state_set_user signature for modern QMK
@@ -189,14 +231,12 @@ def main():
         new_content
     )
 
-    # FIX: Comment out matrix_scan_user if it calls muse functions
-    # This is a bit aggressive but necessary since we don't have the muse driver.
-    # We look for the function and comment out the whole block if it looks like the standard ZSA one.
+    # FIX: Robustly comment out matrix_scan_user using brace counting
     if "muse_clock_pulse" in new_content:
-        print("Found ZSA 'muse' audio code. Disabling matrix_scan_user to prevent linker errors...")
-        # Comment out the specific function call if possible, or the whole function
-        new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*\{[\s\S]*?\})', r'/* \1 */', new_content)
-        # Also comment out the separate definition if it exists
+        print("Found ZSA 'muse' audio code. Disabling matrix_scan_user...")
+        # Disable the function definition
+        new_content = comment_out_function(new_content, "matrix_scan_user")
+        # Disable the separate prototype if it exists
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
 
 
