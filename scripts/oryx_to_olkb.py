@@ -60,35 +60,47 @@ def parse_zsa_layers(content: str):
     for layer_name, layer_content in layer_matches:
         # Clean up the content
         clean_content = re.sub(r"//.*", "", layer_content)  # Strip comments
-        clean_content = re.sub(r"\s+", " ", clean_content) # Normalize whitespace to single spaces
+        # REMOVED: clean_content = re.sub(r"\s+", " ", clean_content) 
+        # Reason: The splitter handles whitespace better if we just let it run on the raw string, 
+        # or at least simplistic whitespace removal was merging tokens incorrectly.
+        # We will just strip newlines for safety but keep spaces for clarity in splitting.
+        clean_content = clean_content.replace("\n", " ").replace("\r", "")
         
         # Use robust splitter instead of simple string split
         keys = split_keycodes(clean_content)
         
+        # Validation: A Planck layer MUST have at least 47 keys.
+        if len(keys) < 47:
+             print(f"Warning: Layer {layer_name} has only {len(keys)} keys. Expected 47 or 48.")
+
         layers.append((layer_name, keys))
 
     return layers
 
 
 def transpose_to_olkb_matrix(keys):
-    """Convert a 48-key 4x12 visual layout into an 8x6 OLKB Planck Rev 6 matrix.
+    """Convert a 48-key 4x12 visual layout into an 8x6 OLKB Planck Rev 6 matrix."""
     
-    This preserves VIAL CAPABILITY by creating the raw matrix structure 
-    that matches the split-matrix hardware of the Rev 6.
-    Left half (cols 0-5)  -> rows 0-3
-    Right half (cols 6-11) -> rows 4-7
-    """
+    # Copy keys to avoid modifying the original list in the loop
+    current_keys = list(keys)
+
     # Handle MIT layout (47 keys with 2u spacebar)
-    if len(keys) == 47:
-        keys.insert(41, keys[41])
+    # Oryx export often skips the "second half" of the 2u spacebar.
+    # We duplicate index 41 (usually space) to make it 48 keys.
+    if len(current_keys) == 47:
+        current_keys.insert(41, current_keys[41])
+    elif len(current_keys) < 47:
+        # Pad with KC_NO if totally broken, to prevent index errors
+        while len(current_keys) < 48:
+            current_keys.append("KC_NO")
 
     # Initialize 8x6 matrix with KC_NO
     matrix = [["KC_NO" for _ in range(6)] for _ in range(8)]
 
     for i in range(48):
-        if i >= len(keys):
+        if i >= len(current_keys):
             break
-        keycode = keys[i]
+        keycode = current_keys[i]
 
         # Calculate visual position (4x12 grid)
         visual_row = i // 12
