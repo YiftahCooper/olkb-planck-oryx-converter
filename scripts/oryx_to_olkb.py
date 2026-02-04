@@ -212,7 +212,7 @@ DYNAMIC_KEYMAP_ENABLE = yes
 # Tap dance support (required for TD() keycodes)
 TAP_DANCE_ENABLE = yes
 
-# Disable Vial's built-in tap dance (using QMK's native implementation from keymap.c)
+# Disable Vial's built-in tap dance to allow custom tap dances in keymap.c
 VIAL_TAP_DANCE_ENABLE = no
 
 # Audio support (Planck Rev6 has speaker/buzzer)
@@ -250,6 +250,9 @@ def generate_config_h(output_path):
 /* Planck matrix: Left half = rows 0-3, Right half = rows 4-7, Cols = 0-5 */
 #define VIAL_UNLOCK_COMBO_ROWS { 0, 4 }
 #define VIAL_UNLOCK_COMBO_COLS { 0, 5 }
+
+/* 3. Explicitly disable Vial's Tap Dance to avoid linker conflicts */
+#define VIAL_TAP_DANCE_ENABLE 0
 """
     with open(output_path, 'w') as f:
         f.write(config_content)
@@ -312,6 +315,14 @@ def main():
 
     new_content = re.sub(full_pattern, new_keymaps_block, content, count=1)
 
+    # FIX: Add QMK quantum header to resolve missing types/macros (SAFE_RANGE, tap_dance_state_t)
+    if '#include "quantum.h"' not in new_content:
+        new_content = '#include "quantum.h" // Added by oryx_to_olkb\n' + new_content
+
+    # FIX: Ensure ZSA_SAFE_RANGE maps to QMK's SAFE_RANGE
+    if "ZSA_SAFE_RANGE" in new_content and "#define ZSA_SAFE_RANGE SAFE_RANGE" not in new_content:
+        new_content = re.sub(r'(enum custom_keycodes\s*\{)', r'#ifndef ZSA_SAFE_RANGE\n#define ZSA_SAFE_RANGE SAFE_RANGE\n#endif\n\1', new_content)
+
     # FIX: Comment out ZSA-specific headers
     new_content = re.sub(r'(#include "version.h")', r'// \1', new_content)
     new_content = re.sub(r'(#include "zsa.h")', r'// \1', new_content)
@@ -330,13 +341,10 @@ def main():
         new_content = comment_out_function(new_content, "matrix_scan_user")
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
 
-    # FIX: Wrap tap_dance_actions in #ifndef VIAL_ENABLE
-    # This ensures Vial can take ownership of tap dances when enabled
-    if "tap_dance_actions[]" in new_content:
-        print("Wrapping tap_dance_actions in #ifndef VIAL_ENABLE...")
-        tap_dance_pattern = r"(tap_dance_action_t\s+tap_dance_actions\[\]\s*=\s*\{[\s\S]*?\};)"
-        replacement = "#ifndef VIAL_ENABLE\\n\\1\\n#endif"
-        new_content = re.sub(tap_dance_pattern, replacement, new_content)
+    # FIX: DO NOT wrap tap_dance_actions in #ifndef VIAL_ENABLE.
+    # QMK introspection requires it to be visible.
+    # We rely on VIAL_TAP_DANCE_ENABLE = no in rules.mk/config.h to prevent linker conflicts.
+    # (No code added here to wrap it)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
