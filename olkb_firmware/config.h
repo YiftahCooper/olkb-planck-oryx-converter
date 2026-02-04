@@ -11,10 +11,3 @@
 /* Planck matrix: Left half = rows 0-3, Right half = rows 4-7, Cols = 0-5 */
 #define VIAL_UNLOCK_COMBO_ROWS { 0, 4 }
 #define VIAL_UNLOCK_COMBO_COLS { 0, 5 }
-
-/* 3. Explicitly disable Vial's Tap Dance to avoid linker conflicts */
-/* Must undefine first in case Vial's header already defined it */
-#ifdef VIAL_TAP_DANCE_ENABLE
-#undef VIAL_TAP_DANCE_ENABLE
-#endif
-#define VIAL_TAP_DANCE_ENABLE 0
