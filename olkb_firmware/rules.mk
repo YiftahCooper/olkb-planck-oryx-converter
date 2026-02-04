@@ -7,7 +7,7 @@ VIAL_ENABLE = yes
 # Tap dance support (required for TD() keycodes)
 TAP_DANCE_ENABLE = yes
 
-# Disable Vial's built-in tap dance (using QMK's native implementation)
+# Disable Vial's built-in tap dance (using QMK's native implementation from keymap.c)
 VIAL_TAP_DANCE_ENABLE = no
 
 # Audio support (Planck Rev6 has speaker/buzzer)
@@ -17,7 +17,8 @@ AUDIO_ENABLE = yes
 MUSIC_ENABLE = yes
 
 # Link-Time Optimization (reduces firmware size)
-LTO_ENABLE = yes
+# Disabled to prevent type mismatch errors between Vial and Keymap definitions
+LTO_ENABLE = no
 
 # Introspection fix
 COMBO_ENABLE = yes
