@@ -209,7 +209,7 @@ VIAL_ENABLE = yes
 # Tap dance support (required for TD() keycodes)
 TAP_DANCE_ENABLE = yes
 
-# Disable Vial's built-in tap dance (using QMK's native implementation)
+# Disable Vial's built-in tap dance (using QMK's native implementation from keymap.c)
 VIAL_TAP_DANCE_ENABLE = no
 
 # Audio support (Planck Rev6 has speaker/buzzer)
@@ -303,18 +303,9 @@ def main():
         # Disable the separate prototype if it exists
         new_content = re.sub(r'(void\s+matrix_scan_user\s*\([^)]*\)\s*;)', r'// \1', new_content)
 
-    # FIX: Add dummy Introspection data if missing (to satisfy compiler)
-    introspection_fix = "\n\n/* Introspection Fixes for Vial/QMK */\n"
-    if "key_combos" not in new_content:
-        # Fixed: removed const and PROGMEM to avoid discard-qualifiers error
-        introspection_fix += "#ifdef COMBO_ENABLE\ncombo_t key_combos[0] = {};\n#endif\n"
+    # NO Introspection Fixes needed - Vial handles key_combos and key_overrides.
+    # Defining them here causes "multiple definition" errors with Vial enabled.
     
-    if "key_overrides" not in new_content:
-        # Fixed: array of pointers
-        introspection_fix += "#ifdef KEY_OVERRIDE_ENABLE\nconst key_override_t *key_overrides[] = { NULL };\n#endif\n"
-
-    new_content += introspection_fix
-
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     with open(OUTPUT_KEYMAP, "w", encoding="utf-8") as f:
@@ -334,8 +325,10 @@ def main():
     print(" - config.h")
     print("\n" + "=" * 50)
     print(" ACTION REQUIRED:")
-    print(" Copy ALL 3 files to:")
-    print(" qmk_firmware/keyboards/planck/keymaps/vial/")
+    print(" You MUST copy ALL 3 files to your keymap directory.")
+    print(" If you do not copy rules.mk, the build WILL FAIL.")
+    print("\n Copy command:")
+    print(" cp olkb_firmware/* qmk_firmware/keyboards/planck/keymaps/vial/")
     print("\n Then compile with:")
     print(" qmk compile -kb planck/rev6 -km vial")
     print("=" * 50)
