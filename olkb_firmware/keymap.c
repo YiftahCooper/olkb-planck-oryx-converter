@@ -1,3 +1,6 @@
+// Converted by oryx_to_olkb.py
+// Retains Vial/OLKB Matrix Compatibility
+#include "quantum.h" // Added by oryx_to_olkb
 #include QMK_KEYBOARD_H
 #ifdef AUDIO_ENABLE
 // #include "muse.h"
@@ -423,8 +426,9 @@ void encoder_update(bool clockwise) {
     }
 }
 
+
 #if 0 // Disabled by oryx_to_olkb
-/* void matrix_scan_user(void) {
+void matrix_scan_user(void) {
 #ifdef AUDIO_ENABLE
     if (muse_mode) {
         if (muse_counter == 0) {
@@ -438,7 +442,7 @@ void encoder_update(bool clockwise) {
         muse_counter = (muse_counter + 1) % muse_tempo;
     }
 #endif
-} */
+}
 #endif
 
 bool music_mask_user(uint16_t keycode) {
@@ -455,6 +459,3 @@ bool music_mask_user(uint16_t keycode) {
 layer_state_t layer_state_set_user(layer_state_t state) {
     return update_tri_layer_state(state, _LOWER, _RAISE, _ADJUST);
 }
-
-
-/* Introspection arrays REMOVED to avoid conflict with Vial and disabled COMBO/OVERRIDE */

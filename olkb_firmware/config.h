@@ -11,3 +11,6 @@
 /* Planck matrix: Left half = rows 0-3, Right half = rows 4-7, Cols = 0-5 */
 #define VIAL_UNLOCK_COMBO_ROWS { 0, 4 }
 #define VIAL_UNLOCK_COMBO_COLS { 0, 5 }
+
+/* 3. Explicitly disable Vial's Tap Dance to avoid linker conflicts */
+#define VIAL_TAP_DANCE_ENABLE 0
