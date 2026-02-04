@@ -236,6 +236,7 @@ KEY_OVERRIDE_ENABLE = no
 def generate_config_h(output_path):
     """
     Generate config.h with Vial UID and unlock combo.
+    REMOVED: VIAL_TAP_DANCE_ENABLE definition (caused redefinition errors with quantum/vial.h)
     """
     config_content = """#pragma once
 
@@ -250,9 +251,6 @@ def generate_config_h(output_path):
 /* Planck matrix: Left half = rows 0-3, Right half = rows 4-7, Cols = 0-5 */
 #define VIAL_UNLOCK_COMBO_ROWS { 0, 4 }
 #define VIAL_UNLOCK_COMBO_COLS { 0, 5 }
-
-/* 3. Explicitly disable Vial's Tap Dance to avoid linker conflicts */
-#define VIAL_TAP_DANCE_ENABLE 0
 """
     with open(output_path, 'w') as f:
         f.write(config_content)
@@ -330,7 +328,7 @@ def main():
     
     # FIX: Update layer_state_set_user signature for modern QMK
     new_content = re.sub(
-        r'(?:uint8_t|uint32_t|layer_state_t)\s+layer_state_set_user\s*\(\s*(?:uint8_t|uint32_t|layer_state_t)\s+state\s*\)',
+        r'(?:uint8_t|uint32_t|layer_state_t)\s+layer_state_set_user\s*\(\s*(?:uint8_t|uint32_t|layer_state_t)\\s+state\s*\)',
         r'layer_state_t layer_state_set_user(layer_state_t state)',
         new_content
     )
@@ -361,18 +359,18 @@ def main():
     # Generate vial.json
     generate_vial_json(OUTPUT_VIAL_JSON)
 
-    print("\n" + "=" * 50)
+    print("\\n" + "=" * 50)
     print(" SUCCESS! Generated 4 files in 'olkb_firmware/':")
     print(" - keymap.c")
     print(" - rules.mk")
     print(" - config.h")
     print(" - vial.json")
-    print("\n" + "=" * 50)
+    print("\\n" + "=" * 50)
     print(" ACTION REQUIRED:")
     print(" 1. Copy 'keymap.c', 'rules.mk', 'config.h' to your QMK keymap folder:")
     print("    cp olkb_firmware/*.c olkb_firmware/*.mk olkb_firmware/*.h qmk_firmware/keyboards/planck/keymaps/vial/")
     print(" 2. Sideload 'vial.json' in the Vial app if automatic detection fails.")
-    print("\n Then compile with:")
+    print("\\n Then compile with:")
     print(" qmk compile -kb planck/rev6 -km vial")
     print("=" * 50)
 
