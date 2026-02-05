@@ -21,6 +21,7 @@ enum tap_dance_codes {
   DANCE_4,
   DANCE_5,
   DANCE_6,
+  DANCE_7,
 };
 
 enum planck_layers {
@@ -33,8 +34,6 @@ enum planck_layers {
 #define LOWER MO(_LOWER)
 #define RAISE MO(_RAISE)
 
-#define DUAL_FUNC_0 LT(5, KC_D)
-
 #define LOWER MO(_LOWER)
 #define RAISE MO(_RAISE)
 
@@ -42,7 +41,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [_BASE] = LAYOUT_planck_grid(
     KC_TAB, KC_Q, KC_W, KC_E, KC_R, KC_T, KC_Y, KC_U, KC_I, KC_O, KC_P, KC_ESCAPE,
     TD(DANCE_0), KC_A, KC_S, KC_D, KC_F, KC_G, KC_H, KC_J, KC_K, KC_L, KC_SCLN, TT(1),
-    DUAL_FUNC_0, KC_Z, KC_X, KC_C, KC_V, KC_B, KC_N, KC_M, KC_COMMA, KC_DOT, TD(DANCE_1), TD(DANCE_2),
+    TD(DANCE_7), KC_Z, KC_X, KC_C, KC_V, KC_B, KC_N, KC_M, KC_COMMA, KC_DOT, TD(DANCE_1), TD(DANCE_2),
     LSFT(KC_LEFT_ALT), KC_TRANSPARENT, KC_LEFT_GUI, TD(DANCE_3), MT(MOD_LSFT, KC_BSLS), TD(DANCE_4), TD(DANCE_4), TD(DANCE_5), TD(DANCE_6), MT(MOD_RSFT, KC_QUOTE), MT(MOD_RCTL, KC_SLASH), KC_EQUAL
 ),
 
@@ -57,7 +56,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     KC_TRANSPARENT, KC_F1, KC_F2, KC_F3, KC_F4, KC_F5, KC_F6, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT,
     KC_TRANSPARENT, KC_F7, KC_F8, KC_F9, KC_F10, KC_F11, KC_F12, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT,
     KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT,
-    KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT
+    KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_NO, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT, KC_TRANSPARENT
 ),
 
   [_ADJUST] = LAYOUT_planck_grid(
@@ -86,7 +85,7 @@ enum {
     MORE_TAPS            
 };
 
-static tap dance_state[7];
+static tap dance_state[8];
 
 uint8_t dance_step(tap_dance_state_t *state);
 
@@ -337,6 +336,42 @@ void dance_6_reset(tap_dance_state_t *state, void *user_data) {
     dance_state[6].step = 0;
 }
 
+void on_dance_7(tap_dance_state_t *state, void *user_data);
+void dance_7_finished(tap_dance_state_t *state, void *user_data);
+void dance_7_reset(tap_dance_state_t *state, void *user_data);
+
+void on_dance_7(tap_dance_state_t *state, void *user_data) {
+    if(state->count == 3) {
+        tap_code16(KC_BSPC);
+        tap_code16(KC_BSPC);
+        tap_code16(KC_BSPC);
+    }
+    if(state->count > 3) {
+        tap_code16(KC_BSPC);
+    }
+}
+
+void dance_7_finished(tap_dance_state_t *state, void *user_data) {
+    dance_state[7].step = dance_step(state);
+    switch (dance_state[7].step) {
+        case SINGLE_TAP: register_code16(KC_BSPC); break;
+        case SINGLE_HOLD: register_code16(KC_BSPC); break; 
+        case DOUBLE_TAP: register_code16(LCTL(KC_BSPC)); break;
+        case DOUBLE_SINGLE_TAP: tap_code16(KC_BSPC); register_code16(KC_BSPC);
+    }
+}
+
+void dance_7_reset(tap_dance_state_t *state, void *user_data) {
+    wait_ms(10);
+    switch (dance_state[7].step) {
+        case SINGLE_TAP: unregister_code16(KC_BSPC); break;
+        case SINGLE_HOLD: unregister_code16(KC_BSPC); break;
+        case DOUBLE_TAP: unregister_code16(LCTL(KC_BSPC)); break;
+        case DOUBLE_SINGLE_TAP: unregister_code16(KC_BSPC); break;
+    }
+    dance_state[7].step = 0;
+}
+
 tap_dance_action_t tap_dance_actions[] = {
         [DANCE_0] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_0, dance_0_finished, dance_0_reset),
         [DANCE_1] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_1, dance_1_finished, dance_1_reset),
@@ -345,6 +380,7 @@ tap_dance_action_t tap_dance_actions[] = {
         [DANCE_4] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_4, dance_4_finished, dance_4_reset),
         [DANCE_5] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_5, dance_5_finished, dance_5_reset),
         [DANCE_6] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_6, dance_6_finished, dance_6_reset),
+        [DANCE_7] = ACTION_TAP_DANCE_FN_ADVANCED(on_dance_7, dance_7_finished, dance_7_reset),
 };
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
