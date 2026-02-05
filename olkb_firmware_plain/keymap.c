@@ -349,7 +349,7 @@ tap_dance_action_t tap_dance_actions[] = {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   switch (keycode) {
-\n                case DUAL_FUNC_0:
+                case DUAL_FUNC_0:
       if (record->tap.count > 0) {
         if (record->event.pressed) {
           register_code16(KC_BSPC);
