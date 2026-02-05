@@ -348,23 +348,6 @@ tap_dance_action_t tap_dance_actions[] = {
 };
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-  switch (keycode) {
-                case DUAL_FUNC_0:
-      if (record->tap.count > 0) {
-        if (record->event.pressed) {
-          register_code16(KC_BSPC);
-        } else {
-          unregister_code16(KC_BSPC);
-        }
-      } else {
-        if (record->event.pressed) {
-          register_code16(LCTL(KC_BSPC));
-        } else {
-          unregister_code16(LCTL(KC_BSPC));
-        }  
-      }  
-      return false;
-  }
   return true;
 }
 
