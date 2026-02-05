@@ -20,7 +20,7 @@
  */
 #ifdef AUDIO_ENABLE
     #define STARTUP_SONG SONG(PLANCK_SOUND)
-    #define AUDIO_CLICKY
+    // #define AUDIO_CLICKY // Disabled to stop beeping on every keypress
 #endif
 
 /*
